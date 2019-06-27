@@ -1,0 +1,71 @@
+#! /bin/bash -e
+# Hacked together by Thorsten von Eicken in 2019
+XTENSA_GDB=~/.platformio/packages/toolchain-xtensa32/bin/xtensa-esp32-elf-gdb
+
+# Validate commandline arguments
+if [ -z "$1" ]; then
+    echo "usage: $0 <elf file> [<backtrace-text>]" 1>&2
+    echo "reads from stdin if no backtrace-text is specified" 2>&2
+    exit 1
+fi
+elf="$1"
+if ! [ -f $elf ]; then
+    echo "ELF file not found ($elf)" 1>&2
+    exit 1
+fi
+
+if [ -z "$2" ]; then
+    echo "reading backtrace from stdin"
+    bt=/dev/stdin
+elif ! [ -f "$2" ]; then
+    echo "Backtrace file not found ($2)" 1>&2
+    exit 1
+else
+    bt=$2
+fi
+
+# Parse exception info and command backtrace
+rePC='PC\s*: (0x40[0-2][0-9a-f]*)'
+reEA='EXCVADDR\s*: (0x40[0-2][0-9a-f]*)'
+reBT='Backtrace: (.*)'
+reIN='^[0-9a-f:x ]+$'
+inBT=0
+declare -a REGS
+while read p; do
+    if [[ "$p" =~ $rePC ]]; then
+        REGS+=(PC:${BASH_REMATCH[1]})
+    elif [[ "$p" =~ $reEA ]]; then
+        REGS+=(EXCVADDR:${BASH_REMATCH[1]})
+    elif [[ "$p" =~ $reBT ]]; then
+        BT="${BASH_REMATCH[1]}"
+        inBT=1
+    elif [[ $inBT && "$p" =~ $reIN ]]; then
+        # backtrace continuation lines cut by terminal emulator
+        BT="$BT${BASH_REMATCH[0]}"
+    else
+        inBT=0
+    fi
+done <$bt
+
+#echo "PC is ${PC}"
+#echo "EA is ${EA}"
+#echo "BT is ${BT}"
+
+n=0
+for stk in $BT; do
+    if [[ $stk =~ (0x40[0-2][0-9a-f]+): ]]; then
+        addr=${BASH_REMATCH[1]}
+        REGS+=("BT-${n}:${addr}")
+    fi
+    let "n=$n + 1"
+    #[[ $n -gt 10 ]] && break
+done
+
+for reg in "${REGS[@]}"; do
+    name=${reg%:*}
+    addr=${reg#*:}
+    info=$($XTENSA_GDB --batch $elf -ex "set listsize 1" -ex "l *$addr" -ex q 2>&1 |\
+        sed -e 's;/[^ ]*/ESP32/;;' |\
+        egrep -v "(No such file or directory)|(^$)") || true
+    if [[ -n "$info" ]]; then echo "$name: $info"; fi
+done
