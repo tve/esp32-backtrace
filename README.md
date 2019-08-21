@@ -7,6 +7,10 @@ and uses GDB to print out the source location of all code addresses.
 It is heavily inspired by https://github.com/me-no-dev/EspExceptionDecoder but only uses
 bash and xtensa-esp32-elf GDB.
 
+__Install:__ Place the esp32-backtrace script somewhere in your path or use the full pathname to run
+it. If you are not using platformio to build your project you need to edit the `XTENSA_GDB`
+definition at the top of the script.
+
 Example
 -------
 My program crashed printing:
@@ -66,9 +70,19 @@ BT-27: 0x40088781 is in vPortTaskWrapper (esp-idf-public/components/freertos/por
 This tells me that the problem happens in an Arduino system task somewhere in
 `esp_wifi_init` (see BT-18).
 
-Notes:
+### Notes:
 - the backtrace shows the inner-most frame first (BT-0) and then goes back in history.
 - instead of pasting the exception text on stdin you can also specify a file to read from as second
   argument.
 - it is OK to have the "Backtrace:" line from the exception text be split up due to copy&paste
   line-wrapping caused by the terminal emulator, the script joins them back together.
+
+Issues
+------
+- While the script handles `Backtrace` continuation lines it doesn't join addresses that get split
+  at the end of the terminal window.
+- GDB is invoked for each address, which is inefficient. It works ok for me, but it would be more
+  elegant to construct a script for GDB and pipe that in so GDB only reads and parses the elf file
+  once.
+- Anything that looks like an address in a register will be printed, whether it's live data or some
+  stale value.
