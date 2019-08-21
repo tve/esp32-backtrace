@@ -2,7 +2,7 @@ ESP32 Exception Stack Backtrace Analyzer
 ========================================
 
 This little bash script parses the exception backtrace printed by the ESP32 firmware
-and uses GDB to print out the source location of all addresses that lie in the code.
+and uses GDB to print out the source location of all code addresses.
 
 It is heavily inspired by https://github.com/me-no-dev/EspExceptionDecoder but only uses
 bash and xtensa-esp32-elf GDB.
