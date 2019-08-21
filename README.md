@@ -32,9 +32,9 @@ x400822fe:0x3ffbca30 0x400dd591:0x3ffbcaa0 0x400dc019:0x3ffbcac0 0x400dc467:0x3f
 fbcde0 0x400d9721:0x3ffbce10 0x400
 ```
 I use platformio so the elf file for my application is in
-`.pioenvs/{environment}/firmware.elf`
+`.pio/build/{environment}/{project}.elf`
 so I launched the esp-backtrace as:
-`esp32-backtrace .pioenvs/{environment}/firmware.elf`
+`esp32-backtrace .pio/build/usb/esp32-secure-base.elf`
 and I pasted the crash printout into its stdin and the result is:
 ```
 PC: 0x40081708 is at esp-idf-public/components/freertos/xtensa_vectors.S:1118.
